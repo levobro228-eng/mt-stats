@@ -1,166 +1,262 @@
 let allData = null;
 let currentPeriod = '6m';
+let currentFilters = {
+    search: '',
+    nations: new Set(),
+    classType: 'all',
+    level: 'all',
+    category: 'all'
+};
+let currentSort = { field: 'win_rate', direction: 'desc' };
+
+const DATA_URL = 'https://raw.githubusercontent.com/levobro228-eng/mt-stats/main/data/tanks.json';
+
+const CATEGORY_LABELS = {
+    regular: 'Прокачиваемые',
+    premium: 'Премиум',
+    collector: 'Коллекционные'
+};
 
 async function loadData() {
     try {
-        console.log('Начинаю загрузку данных...');
-        
-        // Добавляем timestamp чтобы обойти кэш
         const timestamp = new Date().getTime();
-        const url = `./data/tanks.json?t=${timestamp}`;
-        
-        console.log('Загрузка по URL:', url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const response = await fetch(`${DATA_URL}?t=${timestamp}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const text = await response.text();
-        console.log('Размер данных:', text.length, 'символов');
+        if (text.trim() === '{}') throw new Error('Файл данных пуст');
         
         allData = JSON.parse(text);
-        console.log('Данные загружены успешно');
-        console.log('Периоды:', Object.keys(allData.periods || {}));
+        document.getElementById('update-date').textContent = allData.updated || '...';
         
-        const updateDateEl = document.getElementById('update-date');
-        if (updateDateEl) {
-            updateDateEl.textContent = allData.updated || 'неизвестно';
-        }
-        
-        initLevelFilters();
+        initNationFilters();
+        updateSearchHint();
         renderTable();
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        const tbody = document.getElementById('tanks-body');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading">Ошибка загрузки: ${error.message}<br>Проверьте, что файл data/tanks.json существует в репозитории.</td></tr>`;
-        }
+        console.error('Ошибка:', error);
+        document.getElementById('tanks-body').innerHTML = 
+            `<tr><td colspan="7" class="loading">Ошибка: ${error.message}</td></tr>`;
     }
 }
 
-function initLevelFilters() {
-    if (!allData || !allData.periods) {
-        console.warn('Данные не загружены, пропускаем инициализацию фильтров');
-        return;
-    }
-    
-    const levels = new Set();
+function initNationFilters() {
+    if (!allData || !allData.periods) return;
+    const nations = new Set();
     Object.values(allData.periods).forEach(period => {
         if (Array.isArray(period)) {
             period.forEach(tank => {
-                if (tank.level) levels.add(tank.level);
+                if (tank.nation) nations.add(tank.nation);
             });
         }
     });
     
-    const container = document.getElementById('level-filters');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    [...levels].sort((a, b) => a - b).forEach(level => {
-        const label = document.createElement('label');
-        label.innerHTML = `<input type="checkbox" class="filter-level" value="${level}" checked> ${level}`;
-        container.appendChild(label);
+    const nationOrder = ['ussr', 'germany', 'usa', 'china', 'france', 'uk', 'japan', 'czech', 'sweden', 'poland', 'italy'];
+    const sorted = [...nations].sort((a, b) => {
+        const ia = nationOrder.indexOf(a), ib = nationOrder.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
     });
+    
+    const container = document.getElementById('nation-filters');
+    container.innerHTML = '';
+    sorted.forEach(nation => {
+        const flag = getFlagForNation(nation);
+        const btn = document.createElement('button');
+        btn.className = 'nation-btn active';
+        btn.dataset.nation = nation;
+        btn.title = nation;
+        btn.textContent = flag;
+        btn.addEventListener('click', () => toggleNation(nation, btn));
+        container.appendChild(btn);
+        currentFilters.nations.add(nation);
+    });
+}
+
+function getFlagForNation(nation) {
+    const flags = {
+        ussr: '☭', russia: '🇷🇺', germany: '🇩🇪', usa: '🇺🇸', china: '🇳',
+        france: '🇷', uk: '🇬', britain: '🇬', japan: '🇯🇵',
+        czech: '🇨🇿', sweden: '🇸', poland: '🇵', italy: '🇮🇹'
+    };
+    return flags[nation] || '🏳️';
+}
+
+function toggleNation(nation, btn) {
+    if (currentFilters.nations.has(nation)) {
+        currentFilters.nations.delete(nation);
+        btn.classList.remove('active');
+    } else {
+        currentFilters.nations.add(nation);
+        btn.classList.add('active');
+    }
+    renderTable();
+}
+
+function updateSearchHint() {
+    if (!allData || !allData.periods) return;
+    const tanks = allData.periods[currentPeriod] || [];
+    document.getElementById('search-hint').textContent = `Поиск по ${tanks.length} танкам`;
 }
 
 function getFilteredTanks() {
-    if (!allData || !allData.periods) {
-        return [];
+    if (!allData || !allData.periods) return [];
+    let tanks = [...(allData.periods[currentPeriod] || [])];
+    
+    if (currentFilters.search) {
+        const s = currentFilters.search.toLowerCase();
+        tanks = tanks.filter(t => t.name.toLowerCase().includes(s));
+    }
+    if (currentFilters.nations.size > 0) {
+        tanks = tanks.filter(t => currentFilters.nations.has(t.nation));
+    }
+    if (currentFilters.classType !== 'all') {
+        tanks = tanks.filter(t => t.type === currentFilters.classType);
+    }
+    if (currentFilters.level !== 'all') {
+        tanks = tanks.filter(t => t.level === parseInt(currentFilters.level));
+    }
+    if (currentFilters.category !== 'all') {
+        tanks = tanks.filter(t => t.category === currentFilters.category);
     }
     
-    const tanks = allData.periods[currentPeriod] || [];
-    const search = document.getElementById('search-input').value.toLowerCase();
-    
-    const activeTypes = [...document.querySelectorAll('.filter-type:checked')].map(cb => cb.value);
-    const activeClasses = [...document.querySelectorAll('.filter-class:checked')].map(cb => cb.value);
-    const activeLevels = [...document.querySelectorAll('.filter-level:checked')].map(cb => parseInt(cb.value));
-    
-    return tanks.filter(tank => {
-        if (search && !tank.name.toLowerCase().includes(search)) return false;
-        if (!activeTypes.includes(tank.category)) return false;
-        if (!activeClasses.includes(tank.type)) return false;
-        if (!activeLevels.includes(tank.level)) return false;
-        return true;
+    // Сортировка
+    const { field, direction } = currentSort;
+    tanks.sort((a, b) => {
+        let va = a[field], vb = b[field];
+        if (typeof va === 'string') {
+            va = va.toLowerCase(); vb = vb.toLowerCase();
+            return direction === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        }
+        return direction === 'asc' ? va - vb : vb - va;
     });
+    
+    return tanks;
 }
 
-function getWinrateColor(winrate) {
-    if (winrate >= 55) return '#ff4444';
-    if (winrate >= 52) return '#ff8c00';
-    if (winrate >= 50) return '#ffd700';
-    if (winrate >= 48) return '#87ceeb';
-    return '#4caf50';
-}
-
-function getCategoryLabel(cat) {
-    const labels = { regular: 'Обычный', premium: 'Премиум', collector: 'Коллекц.' };
-    return labels[cat] || cat;
+function getWinrateColor(wr) {
+    if (wr >= 55) return '#d32f2f';
+    if (wr >= 52) return '#f57c00';
+    if (wr >= 50) return '#f9a825';
+    if (wr >= 48) return '#1976d2';
+    return '#388e3c';
 }
 
 function renderTable() {
     const tanks = getFilteredTanks();
     const tbody = document.getElementById('tanks-body');
     
-    if (!tbody) return;
-    
-    const statTotal = document.getElementById('stat-total');
-    const statAvgWinrate = document.getElementById('stat-avg-winrate');
-    const statBattles = document.getElementById('stat-battles');
-    
-    if (statTotal) statTotal.textContent = tanks.length;
-    if (statAvgWinrate) {
-        const avgWinrate = tanks.length ? (tanks.reduce((s, t) => s + t.win_rate, 0) / tanks.length).toFixed(2) : 0;
-        statAvgWinrate.textContent = avgWinrate + '%';
-    }
-    if (statBattles) {
-        const totalBattles = tanks.reduce((s, t) => s + t.battles, 0);
-        statBattles.textContent = totalBattles.toLocaleString('ru-RU');
-    }
+    document.getElementById('stat-count').textContent = `${tanks.length} танков`;
+    const avg = tanks.length ? (tanks.reduce((s, t) => s + t.win_rate, 0) / tanks.length).toFixed(2) : 0;
+    document.getElementById('stat-avg').textContent = `Средний винрейт: ${avg}%`;
+    const totalB = tanks.reduce((s, t) => s + t.battles, 0);
+    document.getElementById('stat-battles').textContent = `Всего боёв: ${totalB.toLocaleString('ru-RU')}`;
     
     if (tanks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">Танки не найдены</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Танки не найдены</td></tr>';
         return;
     }
     
-    tbody.innerHTML = tanks.map(tank => `
+    tbody.innerHTML = tanks.map(t => {
+        const nameClass = t.category === 'premium' ? 'premium-name' : t.category === 'collector' ? 'collector-name' : '';
+        const statusLabel = CATEGORY_LABELS[t.category] || t.category;
+        const barWidth = Math.min(100, Math.max(0, (t.win_rate - 40) * 5));
+        const color = getWinrateColor(t.win_rate);
+        
+        return `
         <tr>
+            <td class="flag-cell">${t.flag}</td>
+            <td>${romanize(t.level)}</td>
             <td>
-                <div>${tank.name}</div>
-                <span class="category-badge category-${tank.category}">${getCategoryLabel(tank.category)}</span>
+                <div class="tank-name-cell">
+                    ${t.icon ? `<img class="tank-icon" src="${t.icon}" alt="" onerror="this.style.display='none'">` : ''}
+                    <span class="tank-name ${nameClass}">${t.name}</span>
+                </div>
             </td>
-            <td>${tank.type}</td>
-            <td>${tank.level}</td>
-            <td>${tank.type}</td>
-            <td>${tank.battles.toLocaleString('ru-RU')}</td>
+            <td><span class="status-badge status-${t.category}">${statusLabel}</span></td>
+            <td>${t.battles.toLocaleString('ru-RU')}</td>
+            <td>${t.wins.toLocaleString('ru-RU')}</td>
             <td>
-                <div class="winrate-bar">
-                    <span class="winrate-value" style="color: ${getWinrateColor(tank.win_rate)}">${tank.win_rate}%</span>
+                <div class="winrate-cell">
+                    <span class="winrate-value" style="color:${color}">${t.win_rate}%</span>
                     <div class="winrate-bar-bg">
-                        <div class="winrate-bar-fill" style="width: ${Math.min(100, (tank.win_rate - 40) * 5)}%; background: ${getWinrateColor(tank.win_rate)}"></div>
+                        <div class="winrate-bar-fill" style="width:${barWidth}%;background:${color}"></div>
                     </div>
                 </div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
-document.getElementById('period-select').addEventListener('change', (e) => {
-    currentPeriod = e.target.value;
+function romanize(num) {
+    const map = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'IX',10:'X',11:'XI'};
+    return map[num] || num;
+}
+
+// Обработчики событий
+document.getElementById('search-input').addEventListener('input', (e) => {
+    currentFilters.search = e.target.value;
     renderTable();
 });
 
-document.getElementById('search-input').addEventListener('input', renderTable);
-
-document.addEventListener('change', (e) => {
-    if (e.target.classList.contains('filter-type') || 
-        e.target.classList.contains('filter-class') || 
-        e.target.classList.contains('filter-level')) {
-        renderTable();
-    }
+document.getElementById('btn-find').addEventListener('click', () => {
+    currentFilters.search = document.getElementById('search-input').value;
+    renderTable();
 });
 
-// Загружаем данные при старте
+document.getElementById('btn-reset').addEventListener('click', () => {
+    currentFilters = { search: '', nations: new Set([...document.querySelectorAll('.nation-btn')].map(b => b.dataset.nation)), classType: 'all', level: 'all', category: 'all' };
+    document.getElementById('search-input').value = '';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-btn[data-class="all"], .filter-btn[data-level="all"], .filter-btn[data-category="all"]').forEach(b => b.classList.add('active'));
+    document.querySelectorAll('.nation-btn').forEach(b => b.classList.add('active'));
+    renderTable();
+});
+
+document.querySelectorAll('.filter-btn[data-class]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-class]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.classType = btn.dataset.class;
+        renderTable();
+    });
+});
+
+document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.level = btn.dataset.level;
+        renderTable();
+    });
+});
+
+document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-category]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.category = btn.dataset.category;
+        renderTable();
+    });
+});
+
+// Сортировка по клику на заголовки
+document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        if (currentSort.field === field) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.field = field;
+            currentSort.direction = field === 'win_rate' || field === 'battles' || field === 'wins' || field === 'level' ? 'desc' : 'asc';
+        }
+        document.querySelectorAll('th.sortable').forEach(h => {
+            h.classList.remove('active', 'asc', 'desc');
+        });
+        th.classList.add('active', currentSort.direction);
+        renderTable();
+    });
+});
+
 loadData();
