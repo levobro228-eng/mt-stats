@@ -1,0 +1,31 @@
+name: Обновление данных
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Каждый день в 6:00 UTC
+  workflow_dispatch:  # Ручной запуск
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Установить зависимости
+        run: pip install clickhouse-driver
+      
+      - name: Сгенерировать данные
+        run: python generate_data.py
+      
+      - name: Закоммитить изменения
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/tanks.json
+          git diff --staged --quiet || git commit -m "Обновление данных $(date '+%d.%m.%Y')"
+          git push
