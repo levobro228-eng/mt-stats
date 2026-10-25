@@ -3,41 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WOTMETA — Статистика винрейта «Мир Танков»</title>
+    <title>Статистика винрейта — Мир Танков</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app">
         <header class="header">
             <div class="header-left">
-                <h1 class="logo">WOT<span class="logo-accent">META</span> <span class="beta">/beta</span></h1>
+                <h1 class="logo">📊 Статистика винрейта <span class="logo-accent">«Мир Танков»</span></h1>
             </div>
             <div class="header-right">
                 <span class="region">Регион: <strong>RU</strong></span>
             </div>
         </header>
 
-        <nav class="tabs">
-            <button class="tab active">Серверная статистика</button>
-            <button class="tab">Отличительные отметки</button>
-            <button class="tab">Знаки классности</button>
-            <button class="tab">ТОПы</button>
-            <button class="tab">WG Status</button>
-        </nav>
-
         <main class="main">
             <div class="page-header">
-                <h2>📊 Вся техника</h2>
+                <h2>Вся техника</h2>
                 <span class="update-info">Обновлено: <span id="update-date">...</span></span>
             </div>
 
             <div class="toolbar">
-                <button class="btn-settings">Настройки</button>
                 <div class="search-box">
                     <input type="text" id="search-input" placeholder="Введите название танка...">
                     <span class="search-hint" id="search-hint">Поиск</span>
                 </div>
-                <button class="btn-find" id="btn-find">Найти</button>
                 <button class="btn-reset" id="btn-reset">Сбросить фильтр</button>
             </div>
 
@@ -45,7 +35,7 @@
 
             <div class="filter-row">
                 <div class="class-filters" id="class-filters">
-                    <button class="filter-btn active" data-class="all">Все</button>
+                    <button class="filter-btn active" data-class="all">Все классы</button>
                     <button class="filter-btn" data-class="ЛТ">ЛТ</button>
                     <button class="filter-btn" data-class="СТ">СТ</button>
                     <button class="filter-btn" data-class="ТТ">ТТ</button>
@@ -54,59 +44,6 @@
                 </div>
 
                 <div class="level-filters" id="level-filters">
-                    <button class="filter-btn active" data-level="all">Все</button>
+                    <button class="filter-btn active" data-level="all">Все уровни</button>
                     <button class="filter-btn" data-level="1">I</button>
-                    <button class="filter-btn" data-level="2">II</button>
-                    <button class="filter-btn" data-level="3">III</button>
-                    <button class="filter-btn" data-level="4">IV</button>
-                    <button class="filter-btn" data-level="5">V</button>
-                    <button class="filter-btn" data-level="6">VI</button>
-                    <button class="filter-btn" data-level="7">VII</button>
-                    <button class="filter-btn" data-level="8">VIII</button>
-                    <button class="filter-btn" data-level="9">IX</button>
-                    <button class="filter-btn" data-level="10">X</button>
-                    <button class="filter-btn" data-level="11">XI</button>
-                </div>
-
-                <div class="category-filters" id="category-filters">
-                    <button class="filter-btn active" data-category="all">Все</button>
-                    <button class="filter-btn" data-category="premium">Премиум</button>
-                    <button class="filter-btn" data-category="regular">Прокачиваемые</button>
-                    <button class="filter-btn" data-category="collector">Коллекционные</button>
-                </div>
-            </div>
-
-            <div class="stats-bar">
-                <span id="stat-count">0 танков</span>
-                <span id="stat-avg">Средний винрейт: 0%</span>
-                <span id="stat-battles">Всего боёв: 0</span>
-            </div>
-
-            <div class="table-container">
-                <table id="tanks-table">
-                    <thead>
-                        <tr>
-                            <th class="sortable" data-sort="nation">Нация</th>
-                            <th class="sortable" data-sort="level">Уровень</th>
-                            <th class="sortable" data-sort="name">Название</th>
-                            <th class="sortable" data-sort="category">Статус</th>
-                            <th class="sortable" data-sort="battles">Боёв</th>
-                            <th class="sortable" data-sort="wins">Победы</th>
-                            <th class="sortable active" data-sort="win_rate">% Побед</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tanks-body">
-                        <tr><td colspan="7" class="loading">Загрузка данных...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </main>
-
-        <footer class="footer">
-            <p>Данные: <a href="https://wotstat.info/" target="_blank">wotstat.info</a> • Сделано с ❤️ для игроков «Мира Танков»</p>
-        </footer>
-    </div>
-
-    <script src="script.js"></script>
-</body>
-</html>
+                    <button class="filter-btn" data-level
