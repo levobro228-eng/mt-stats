@@ -2,6 +2,7 @@ import json
 import os
 import time
 import urllib.request
+import urllib.parse
 from datetime import datetime
 
 PREMIUM_TANKS = {
@@ -64,7 +65,7 @@ TYPE_MAP = {
     'LT': 'ЛТ', 'MT': 'СТ', 'HT': 'ТТ', 'AT': 'ПТ-САУ', 'SPG': 'САУ'
 }
 
-CLICKHOUSE_URL = 'http://db.wotstat.info:80/'
+CLICKHOUSE_URL = 'http://db.wotstat.info:80/?user=public'
 
 def fetch_data(months, max_retries=3):
     min_battles = 300 if months <= 6 else 1000
@@ -123,12 +124,15 @@ def fetch_data(months, max_retries=3):
     for attempt in range(max_retries):
         try:
             print(f"  Попытка {attempt + 1}/{max_retries}...")
+            
+            url = f"{CLICKHOUSE_URL}&query={urllib.parse.quote(query)}"
+            
             req = urllib.request.Request(
-                CLICKHOUSE_URL,
-                data=query.encode('utf-8'),
-                headers={'Content-Type': 'text/plain; charset=utf-8'},
-                method='POST'
+                url,
+                method='GET',
+                headers={'User-Agent': 'Mozilla/5.0'}
             )
+            
             with urllib.request.urlopen(req, timeout=60) as response:
                 text = response.read().decode('utf-8')
             
