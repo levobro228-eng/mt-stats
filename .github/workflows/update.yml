@@ -2,8 +2,8 @@ name: Обновление данных
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # Каждый день в 6:00 UTC
-  workflow_dispatch:  # Ручной запуск
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 jobs:
   update:
@@ -15,9 +15,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: Установить зависимости
-        run: pip install clickhouse-driver
       
       - name: Сгенерировать данные
         run: python generate_data.py
