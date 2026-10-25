@@ -17,6 +17,50 @@ const CATEGORY_LABELS = {
     collector: 'Коллекционные'
 };
 
+// Маппинг наций на ISO-коды стран для флагов (flagcdn.com)
+const NATION_TO_COUNTRY = {
+    'ussr': 'ru',
+    'russia': 'ru',
+    'germany': 'de',
+    'usa': 'us',
+    'china': 'cn',
+    'france': 'fr',
+    'uk': 'gb',
+    'britain': 'gb',
+    'japan': 'jp',
+    'czech': 'cz',
+    'czechoslovakia': 'cz',
+    'sweden': 'se',
+    'poland': 'pl',
+    'italy': 'it'
+};
+
+const NATION_NAMES = {
+    'ussr': 'СССР',
+    'russia': 'Россия',
+    'germany': 'Германия',
+    'usa': 'США',
+    'china': 'Китай',
+    'france': 'Франция',
+    'uk': 'Великобритания',
+    'britain': 'Великобритания',
+    'japan': 'Япония',
+    'czech': 'Чехия',
+    'czechoslovakia': 'Чехословакия',
+    'sweden': 'Швеция',
+    'poland': 'Польша',
+    'italy': 'Италия'
+};
+
+function getFlagUrl(nation) {
+    const code = NATION_TO_COUNTRY[nation] || 'xx';
+    return `https://flagcdn.com/w40/${code}.png`;
+}
+
+function getNationName(nation) {
+    return NATION_NAMES[nation] || nation;
+}
+
 async function loadData() {
     try {
         const timestamp = new Date().getTime();
@@ -62,25 +106,15 @@ function initNationFilters() {
     const container = document.getElementById('nation-filters');
     container.innerHTML = '';
     sorted.forEach(nation => {
-        const flag = getFlagForNation(nation);
         const btn = document.createElement('button');
         btn.className = 'nation-btn active';
         btn.dataset.nation = nation;
-        btn.title = nation;
-        btn.textContent = flag;
+        btn.title = getNationName(nation);
+        btn.innerHTML = `<img src="${getFlagUrl(nation)}" alt="${getNationName(nation)}">`;
         btn.addEventListener('click', () => toggleNation(nation, btn));
         container.appendChild(btn);
         currentFilters.nations.add(nation);
     });
-}
-
-function getFlagForNation(nation) {
-    const flags = {
-        ussr: '☭', russia: '🇷🇺', germany: '🇩🇪', usa: '🇺🇸', china: '🇳',
-        france: '🇷', uk: '🇬', britain: '🇬', japan: '🇯🇵',
-        czech: '🇨🇿', sweden: '🇸', poland: '🇵', italy: '🇮🇹'
-    };
-    return flags[nation] || '🏳️';
 }
 
 function toggleNation(nation, btn) {
@@ -121,7 +155,6 @@ function getFilteredTanks() {
         tanks = tanks.filter(t => t.category === currentFilters.category);
     }
     
-    // Сортировка
     const { field, direction } = currentSort;
     tanks.sort((a, b) => {
         let va = a[field], vb = b[field];
@@ -166,7 +199,7 @@ function renderTable() {
         
         return `
         <tr>
-            <td class="flag-cell">${t.flag}</td>
+            <td class="flag-cell"><img src="${getFlagUrl(t.nation)}" alt="${getNationName(t.nation)}" title="${getNationName(t.nation)}"></td>
             <td>${romanize(t.level)}</td>
             <td>
                 <div class="tank-name-cell">
@@ -200,13 +233,14 @@ document.getElementById('search-input').addEventListener('input', (e) => {
     renderTable();
 });
 
-document.getElementById('btn-find').addEventListener('click', () => {
-    currentFilters.search = document.getElementById('search-input').value;
-    renderTable();
-});
-
 document.getElementById('btn-reset').addEventListener('click', () => {
-    currentFilters = { search: '', nations: new Set([...document.querySelectorAll('.nation-btn')].map(b => b.dataset.nation)), classType: 'all', level: 'all', category: 'all' };
+    currentFilters = { 
+        search: '', 
+        nations: new Set([...document.querySelectorAll('.nation-btn')].map(b => b.dataset.nation)), 
+        classType: 'all', 
+        level: 'all', 
+        category: 'all' 
+    };
     document.getElementById('search-input').value = '';
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.filter-btn[data-class="all"], .filter-btn[data-level="all"], .filter-btn[data-category="all"]').forEach(b => b.classList.add('active'));
@@ -241,7 +275,6 @@ document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
     });
 });
 
-// Сортировка по клику на заголовки
 document.querySelectorAll('th.sortable').forEach(th => {
     th.addEventListener('click', () => {
         const field = th.dataset.sort;
