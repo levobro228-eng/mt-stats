@@ -19,43 +19,22 @@ body {
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: 800;
+    font-size: 1.6rem;
+    font-weight: 700;
     color: #222;
-    letter-spacing: -1px;
+    letter-spacing: -0.5px;
 }
 
 .logo-accent { color: #7cb342; }
-.beta { font-size: 0.7rem; color: #999; font-weight: 400; vertical-align: super; }
 .region { color: #666; font-size: 0.9rem; }
 .region strong { color: #7cb342; }
-
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 25px;
-    flex-wrap: wrap;
-}
-
-.tab {
-    padding: 8px 18px;
-    border: 1px solid #ddd;
-    background: #fff;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #555;
-    transition: all 0.2s;
-}
-
-.tab:hover { background: #f0f0f0; }
-.tab.active { background: #7cb342; color: #fff; border-color: #7cb342; }
 
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    margin-top: 10px;
 }
 
 .page-header h2 { font-size: 1.6rem; color: #222; }
@@ -69,18 +48,17 @@ body {
     align-items: center;
 }
 
-.btn-settings, .btn-find, .btn-reset {
+.btn-reset {
     padding: 8px 16px;
-    border: 1px solid #ddd;
+    border: 1px solid #ffcdd2;
     background: #fff;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
-    color: #555;
+    color: #c62828;
 }
 
-.btn-find { background: #7cb342; color: #fff; border-color: #7cb342; }
-.btn-reset { color: #c62828; border-color: #ffcdd2; }
+.btn-reset:hover { background: #ffebee; }
 
 .search-box {
     flex: 1;
@@ -102,23 +80,34 @@ body {
 
 .nation-filters {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     padding: 12px 15px;
     background: #fff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     margin-bottom: 15px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .nation-btn {
-    font-size: 1.5rem;
     background: none;
     border: 2px solid transparent;
     border-radius: 6px;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 4px;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nation-btn img {
+    width: 32px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .nation-btn:hover { background: #f0f0f0; }
@@ -207,7 +196,14 @@ tr:hover td { background: #f9f9f9; }
 .tank-name.premium-name { color: #e65100; }
 .tank-name.collector-name { color: #6a1b9a; }
 
-.flag-cell { font-size: 1.3rem; }
+.flag-cell { display: flex; align-items: center; justify-content: center; }
+.flag-cell img {
+    width: 28px;
+    height: 20px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
 
 .status-badge {
     display: inline-block;
@@ -260,10 +256,12 @@ tr:hover td { background: #f9f9f9; }
 .footer a { color: #7cb342; text-decoration: none; }
 
 @media (max-width: 768px) {
-    .logo { font-size: 1.3rem; }
+    .logo { font-size: 1.2rem; }
     .page-header h2 { font-size: 1.2rem; }
     th, td { padding: 8px 6px; font-size: 0.8rem; }
     .tank-icon { width: 30px; }
     .filter-row { gap: 8px; }
     .stats-bar { gap: 10px; font-size: 0.8rem; }
+    .nation-btn img { width: 26px; height: 18px; }
+    .flag-cell img { width: 22px; height: 15px; }
 }
