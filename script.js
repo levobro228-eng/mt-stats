@@ -51,8 +51,8 @@ const NATION_NAMES = {
     'italy': 'Италия'
 };
 
-// Простой SVG флаг СССР (красный с жёлтой звездой)
-const USSR_FLAG_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><rect width='90' height='60' fill='%23CC0000'/><polygon points='15,10 18,20 28,20 20,26 23,36 15,30 7,36 10,26 2,20 12,20' fill='%23FFCC00'/></svg>";
+// Улучшенный SVG флаг СССР (красный с серпом и молотом)
+const USSR_FLAG_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><rect width='90' height='60' fill='%23CC0000'/><g fill='%23FFCC00' transform='translate(15,15) scale(0.4)'><polygon points='0,0 15,45 60,45 25,75 40,120 0,90 -40,120 -25,75 -60,45 -15,45'/><path d='M 30 150 Q 30 200 80 200 Q 130 200 130 150 L 110 150 Q 110 180 80 180 Q 50 180 50 150 Z'/><rect x='75' y='140' width='8' height='60'/><rect x='60' y='155' width='40' height='8' transform='rotate(25 80 155)'/></g></svg>";
 
 // SVG флаг России (бело-сине-красный)
 const RUSSIA_FLAG_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><rect width='90' height='20' fill='white'/><rect y='20' width='90' height='20' fill='%230039A6'/><rect y='40' width='90' height='20' fill='%23D52B1E'/></svg>";
@@ -178,124 +178,4 @@ function getFilteredTanks() {
 function getWinrateColor(wr) {
     if (wr >= 55) return '#d32f2f';
     if (wr >= 52) return '#f57c00';
-    if (wr >= 50) return '#f9a825';
-    if (wr >= 48) return '#1976d2';
-    return '#388e3c';
-}
-
-function renderTable() {
-    const tanks = getFilteredTanks();
-    const tbody = document.getElementById('tanks-body');
-    
-    document.getElementById('stat-count').textContent = `${tanks.length} танков`;
-    const avg = tanks.length ? (tanks.reduce((s, t) => s + t.win_rate, 0) / tanks.length).toFixed(2) : 0;
-    document.getElementById('stat-avg').textContent = `Средний винрейт: ${avg}%`;
-    const totalB = tanks.reduce((s, t) => s + t.battles, 0);
-    document.getElementById('stat-battles').textContent = `Всего боёв: ${totalB.toLocaleString('ru-RU')}`;
-    
-    if (tanks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Танки не найдены</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = tanks.map(t => {
-        const nameClass = t.category === 'premium' ? 'premium-name' : t.category === 'collector' ? 'collector-name' : '';
-        const statusLabel = CATEGORY_LABELS[t.category] || t.category;
-        const barWidth = Math.min(100, Math.max(0, (t.win_rate - 40) * 5));
-        const color = getWinrateColor(t.win_rate);
-        
-        return `
-        <tr>
-            <td class="flag-cell"><img src="${getFlagUrl(t.nation)}" alt="${getNationName(t.nation)}" title="${getNationName(t.nation)}"></td>
-            <td>${romanize(t.level)}</td>
-            <td>
-                <div class="tank-name-cell">
-                    ${t.icon ? `<img class="tank-icon" src="${t.icon}" alt="" onerror="this.style.display='none'">` : ''}
-                    <span class="tank-name ${nameClass}">${t.name}</span>
-                </div>
-            </td>
-            <td><span class="status-badge status-${t.category}">${statusLabel}</span></td>
-            <td>${t.battles.toLocaleString('ru-RU')}</td>
-            <td>${t.wins.toLocaleString('ru-RU')}</td>
-            <td>
-                <div class="winrate-cell">
-                    <span class="winrate-value" style="color:${color}">${t.win_rate}%</span>
-                    <div class="winrate-bar-bg">
-                        <div class="winrate-bar-fill" style="width:${barWidth}%;background:${color}"></div>
-                    </div>
-                </div>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-function romanize(num) {
-    const map = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'IX',10:'X',11:'XI'};
-    return map[num] || num;
-}
-
-document.getElementById('search-input').addEventListener('input', (e) => {
-    currentFilters.search = e.target.value;
-    renderTable();
-});
-
-document.getElementById('btn-reset').addEventListener('click', () => {
-    currentFilters = { 
-        search: '', 
-        nations: new Set([...document.querySelectorAll('.nation-btn')].map(b => b.dataset.nation)), 
-        classType: 'all', 
-        level: 'all', 
-        category: 'all' 
-    };
-    document.getElementById('search-input').value = '';
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.filter-btn[data-class="all"], .filter-btn[data-level="all"], .filter-btn[data-category="all"]').forEach(b => b.classList.add('active'));
-    document.querySelectorAll('.nation-btn').forEach(b => b.classList.add('active'));
-    renderTable();
-});
-
-document.querySelectorAll('.filter-btn[data-class]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn[data-class]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilters.classType = btn.dataset.class;
-        renderTable();
-    });
-});
-
-document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilters.level = btn.dataset.level;
-        renderTable();
-    });
-});
-
-document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn[data-category]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilters.category = btn.dataset.category;
-        renderTable();
-    });
-});
-
-document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-        const field = th.dataset.sort;
-        if (currentSort.field === field) {
-            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            currentSort.field = field;
-            currentSort.direction = field === 'win_rate' || field === 'battles' || field === 'wins' || field === 'level' ? 'desc' : 'asc';
-        }
-        document.querySelectorAll('th.sortable').forEach(h => {
-            h.classList.remove('active', 'asc', 'desc');
-        });
-        th.classList.add('active', currentSort.direction);
-        renderTable();
-    });
-});
-
-loadData();
+    if (wr >= 50) return '#f9a
