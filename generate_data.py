@@ -1,7 +1,8 @@
 import json
 import os
+import time
+import requests
 from datetime import datetime
-from clickhouse_driver import Client
 
 PREMIUM_TANKS = {
     'КВ-220-2', 'КВ-220-2 Бета-Тест', 'Черчилль III', 'ИС-6', 'КВ-5',
@@ -63,8 +64,10 @@ TYPE_MAP = {
     'LT': 'ЛТ', 'MT': 'СТ', 'HT': 'ТТ', 'AT': 'ПТ-САУ', 'SPG': 'САУ'
 }
 
-def fetch_data(months):
-    client = Client(host='db.wotstat.info', port=80, user='public', password='')
+# URL HTTP-интерфейса ClickHouse
+CLICKHOUSE_URL = 'http://db.wotstat.info:80'
+
+def fetch_data(months, max_retries=3):
     min_battles = 300 if months <= 6 else 1000
     
     query = f"""
@@ -118,22 +121,46 @@ def fetch_data(months):
     ORDER BY e.level ASC, e.type ASC, e.win_rate DESC
     """
     
-    result = client.execute(query)
-    tanks = []
-    for row in result:
-        name, short_name, level, tank_type, battles, wins, win_rate = row
-        tanks.append({
-            'name': name,
-            'short_name': short_name,
-            'level': level,
-            'type': TYPE_MAP.get(tank_type, tank_type),
-            'type_code': tank_type,
-            'battles': battles,
-            'wins': wins,
-            'win_rate': win_rate,
-            'category': classify_tank(name)
-        })
-    return tanks
+    # Пробуем несколько раз в случае ошибки
+    for attempt in range(max_retries):
+        try:
+            print(f"  Попытка {attempt + 1}/{max_retries}...")
+            response = requests.post(
+                CLICKHOUSE_URL,
+                data=query.encode('utf-8'),
+                headers={'Content-Type': 'text/plain; charset=utf-8'},
+                timeout=60
+            )
+            response.raise_for_status()
+            
+            # Парсим ответ (TSV формат)
+            lines = response.text.strip().split('\n')
+            tanks = []
+            for line in lines:
+                if not line.strip():
+                    continue
+                parts = line.split('\t')
+                if len(parts) >= 7:
+                    name, short_name, level, tank_type, battles, wins, win_rate = parts[:7]
+                    tanks.append({
+                        'name': name,
+                        'short_name': short_name,
+                        'level': int(level),
+                        'type': TYPE_MAP.get(tank_type, tank_type),
+                        'type_code': tank_type,
+                        'battles': int(battles),
+                        'wins': int(wins),
+                        'win_rate': float(win_rate),
+                        'category': classify_tank(name)
+                    })
+            return tanks
+        except Exception as e:
+            print(f"  Ошибка: {e}")
+            if attempt < max_retries - 1:
+                print("  Ждём 5 секунд...")
+                time.sleep(5)
+    
+    raise Exception(f"Не удалось получить данные после {max_retries} попыток")
 
 def main():
     print("Генерация данных...")
@@ -141,19 +168,26 @@ def main():
     
     data = {
         'updated': datetime.now().strftime('%d.%m.%Y %H:%M'),
-        'periods': {
-            '3m': fetch_data(3),
-            '6m': fetch_data(6),
-            '12m': fetch_data(12),
-            'all': fetch_data(999)
-        }
+        'periods': {}
     }
+    
+    periods = {
+        '3m': 3,
+        '6m': 6,
+        '12m': 12,
+        'all': 999
+    }
+    
+    for key, months in periods.items():
+        print(f"Загрузка данных за {months} мес...")
+        data['periods'][key] = fetch_data(months)
+        print(f"  Получено {len(data['periods'][key])} танков")
     
     with open('data/tanks.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     
     total = sum(len(v) for v in data['periods'].values())
-    print(f"Готово! Сохранено {total} записей в data/tanks.json")
+    print(f"\nГотово! Сохранено {total} записей в data/tanks.json")
 
 if __name__ == '__main__':
     main()
