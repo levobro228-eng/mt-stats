@@ -46,4 +46,57 @@
                 <div class="level-filters" id="level-filters">
                     <button class="filter-btn active" data-level="all">Все уровни</button>
                     <button class="filter-btn" data-level="1">I</button>
-                    <button class="filter-btn" data-level
+                    <button class="filter-btn" data-level="2">II</button>
+                    <button class="filter-btn" data-level="3">III</button>
+                    <button class="filter-btn" data-level="4">IV</button>
+                    <button class="filter-btn" data-level="5">V</button>
+                    <button class="filter-btn" data-level="6">VI</button>
+                    <button class="filter-btn" data-level="7">VII</button>
+                    <button class="filter-btn" data-level="8">VIII</button>
+                    <button class="filter-btn" data-level="9">IX</button>
+                    <button class="filter-btn" data-level="10">X</button>
+                    <button class="filter-btn" data-level="11">XI</button>
+                </div>
+
+                <div class="category-filters" id="category-filters">
+                    <button class="filter-btn active" data-category="all">Все типы</button>
+                    <button class="filter-btn" data-category="regular">Прокачиваемые</button>
+                    <button class="filter-btn" data-category="premium">Премиум</button>
+                    <button class="filter-btn" data-category="collector">Коллекционные</button>
+                </div>
+            </div>
+
+            <div class="stats-bar">
+                <span id="stat-count">0 танков</span>
+                <span id="stat-avg">Средний винрейт: 0%</span>
+                <span id="stat-battles">Всего боёв: 0</span>
+            </div>
+
+            <div class="table-container">
+                <table id="tanks-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="nation">Нация</th>
+                            <th class="sortable" data-sort="level">Уровень</th>
+                            <th class="sortable" data-sort="name">Название</th>
+                            <th class="sortable" data-sort="category">Статус</th>
+                            <th class="sortable" data-sort="battles">Боёв</th>
+                            <th class="sortable" data-sort="wins">Победы</th>
+                            <th class="sortable active desc" data-sort="win_rate">% Побед</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tanks-body">
+                        <tr><td colspan="7" class="loading">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Данные: <a href="https://wotstat.info/" target="_blank">wotstat.info</a> • Сделано с ❤️ для игроков «Мира Танков»</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
