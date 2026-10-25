@@ -6,33 +6,31 @@ import urllib.parse
 from datetime import datetime
 
 DB_URL = 'http://db.wotstat.info:80/?user=public'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TYPE_MAP = {'lightTank': 'LT', 'mediumTank': 'MT', 'heavyTank': 'HT', 'AT-SPG': 'AT', 'SPG': 'SPG'}
 
-# Суффиксы для премиум танков
-PREMIUM_SUFFIXES = [
-    '_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D',
-    '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF',
-    '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang',
-    '_Yong_Bing', '_Yongshi'
-]
+PREMIUM_SUFFIXES = ['_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D', '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF', '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang', '_Yong_Bing', '_Yongshi']
 
-# Маркеры коллекционных танков в теге
-COLLECTOR_MARKERS = [
-    '_Coll', '_Event', '_Reward', '_Gift', '_Special',
-    '_Anniversary', '_Holiday', '_NewYear', '_Christmas'
-]
+def load_list(filename):
+    path = os.path.join(BASE_DIR, filename)
+    if not os.path.exists(path):
+        return set()
+    with open(path, 'r', encoding='utf-8') as f:
+        return set(line.strip().lower() for line in f if line.strip())
 
-def classify_tank(tag):
-    # Сначала проверяем коллекционные маркеры
-    for marker in COLLECTOR_MARKERS:
-        if marker in tag:
-            return 'collector'
-    # Потом премиум суффиксы
+def normalize(name):
+    return name.strip().lower()
+
+def classify_tank(name, tag, premiums, collectors):
+    n = normalize(name)
+    if n in collectors:
+        return 'collector'
+    if n in premiums:
+        return 'premium'
     for suffix in PREMIUM_SUFFIXES:
         if suffix in tag:
             return 'premium'
-    # По умолчанию - обычный
     return 'regular'
 
 def build_query(months, min_b):
@@ -87,14 +85,22 @@ def fetch(months, tries=3):
 def main():
     print("Starting...")
     os.makedirs('data', exist_ok=True)
+    
+    premiums = load_list('premiums.txt')
+    collectors = load_list('collectors.txt')
+    print("Loaded " + str(len(premiums)) + " premium and " + str(len(collectors)) + " collector names")
+    
     data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
     for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
         print("Loading " + str(months) + " months...")
         tanks = fetch(months)
         for tank in tanks:
-            tank['category'] = classify_tank(tank['tag'])
+            tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
         data['periods'][key] = tanks
-        print("Got " + str(len(tanks)) + " tanks")
+        cats = {}
+        for t in tanks:
+            cats[t['category']] = cats.get(t['category'], 0) + 1
+        print("Got " + str(len(tanks)) + " tanks: " + str(cats))
     with open('data/tanks.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     total = sum(len(v) for v in data['periods'].values())
