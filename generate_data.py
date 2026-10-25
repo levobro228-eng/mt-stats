@@ -1,7 +1,7 @@
 import json
 import os
 import time
-import requests
+import urllib.request
 from datetime import datetime
 
 PREMIUM_TANKS = {
@@ -64,8 +64,7 @@ TYPE_MAP = {
     'LT': 'ЛТ', 'MT': 'СТ', 'HT': 'ТТ', 'AT': 'ПТ-САУ', 'SPG': 'САУ'
 }
 
-# URL HTTP-интерфейса ClickHouse
-CLICKHOUSE_URL = 'http://db.wotstat.info:80'
+CLICKHOUSE_URL = 'http://db.wotstat.info:80/'
 
 def fetch_data(months, max_retries=3):
     min_battles = 300 if months <= 6 else 1000
@@ -121,20 +120,19 @@ def fetch_data(months, max_retries=3):
     ORDER BY e.level ASC, e.type ASC, e.win_rate DESC
     """
     
-    # Пробуем несколько раз в случае ошибки
     for attempt in range(max_retries):
         try:
             print(f"  Попытка {attempt + 1}/{max_retries}...")
-            response = requests.post(
+            req = urllib.request.Request(
                 CLICKHOUSE_URL,
                 data=query.encode('utf-8'),
                 headers={'Content-Type': 'text/plain; charset=utf-8'},
-                timeout=60
+                method='POST'
             )
-            response.raise_for_status()
+            with urllib.request.urlopen(req, timeout=60) as response:
+                text = response.read().decode('utf-8')
             
-            # Парсим ответ (TSV формат)
-            lines = response.text.strip().split('\n')
+            lines = text.strip().split('\n')
             tanks = []
             for line in lines:
                 if not line.strip():
