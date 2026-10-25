@@ -229,4 +229,72 @@ function romanize(num) {
 
 document.getElementById('period-select').addEventListener('change', (e) => {
     currentPeriod = e.target.value;
-    update
+    updateSearchHint();
+    renderTable();
+});
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+    currentFilters.search = e.target.value;
+    renderTable();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+    currentFilters = { 
+        search: '', 
+        nations: new Set([...document.querySelectorAll('.nation-btn')].map(b => b.dataset.nation)), 
+        classType: 'all', 
+        level: 'all', 
+        category: 'all' 
+    };
+    document.getElementById('search-input').value = '';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-btn[data-class="all"], .filter-btn[data-level="all"], .filter-btn[data-category="all"]').forEach(b => b.classList.add('active'));
+    document.querySelectorAll('.nation-btn').forEach(b => b.classList.add('active'));
+    renderTable();
+});
+
+document.querySelectorAll('.filter-btn[data-class]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-class]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.classType = btn.dataset.class;
+        renderTable();
+    });
+});
+
+document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.level = btn.dataset.level;
+        renderTable();
+    });
+});
+
+document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-category]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.category = btn.dataset.category;
+        renderTable();
+    });
+});
+
+document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        if (currentSort.field === field) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.field = field;
+            currentSort.direction = field === 'win_rate' || field === 'battles' || field === 'wins' || field === 'level' ? 'desc' : 'asc';
+        }
+        document.querySelectorAll('th.sortable').forEach(h => {
+            h.classList.remove('active', 'asc', 'desc');
+        });
+        th.classList.add('active', currentSort.direction);
+        renderTable();
+    });
+});
+
+loadData();
