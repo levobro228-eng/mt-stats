@@ -42,10 +42,37 @@ body {
 
 .toolbar {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     margin-bottom: 15px;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
+}
+
+.toolbar .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 180px;
+}
+
+.toolbar .control-group label {
+    font-size: 0.85rem;
+    color: #555;
+    font-weight: 600;
+}
+
+.toolbar #period-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+}
+
+.toolbar #period-select:focus {
+    border-color: #7cb342;
 }
 
 .btn-reset {
@@ -56,6 +83,8 @@ body {
     cursor: pointer;
     font-size: 0.9rem;
     color: #c62828;
+    align-self: flex-end;
+    margin-bottom: 1px;
 }
 
 .btn-reset:hover { background: #ffebee; }
@@ -264,4 +293,6 @@ tr:hover td { background: #f9f9f9; }
     .stats-bar { gap: 10px; font-size: 0.8rem; }
     .nation-btn img { width: 26px; height: 18px; }
     .flag-cell img { width: 22px; height: 15px; }
+    .toolbar { gap: 10px; }
+    .toolbar .control-group { min-width: 150px; }
 }
