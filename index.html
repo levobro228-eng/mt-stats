@@ -24,6 +24,16 @@
             </div>
 
             <div class="toolbar">
+                <div class="control-group">
+                    <label> Период:</label>
+                    <select id="period-select">
+                        <option value="3m">3 месяца (текущая мета)</option>
+                        <option value="6m" selected>6 месяцев</option>
+                        <option value="12m">1 год</option>
+                        <option value="all">За всё время</option>
+                    </select>
+                </div>
+
                 <div class="search-box">
                     <input type="text" id="search-input" placeholder="Введите название танка...">
                     <span class="search-hint" id="search-hint">Поиск</span>
