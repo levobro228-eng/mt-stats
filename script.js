@@ -51,11 +51,11 @@ const NATION_NAMES = {
     'italy': 'Италия'
 };
 
-// SVG флаг СССР (красный с серпом и молотом)
-const USSR_FLAG_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60"><rect width="90" height="60" fill="%23CC0000"/><g fill="%23FFCC00" transform="translate(13,13) scale(0.35)"><polygon points="0,0 15,45 60,45 25,75 40,120 0,90 -40,120 -25,75 -60,45 -15,45"/><path d="M 30 150 Q 30 200 80 200 Q 130 200 130 150 L 110 150 Q 110 180 80 180 Q 50 180 50 150 Z"/><rect x="75" y="140" width="8" height="60"/><rect x="60" y="155" width="40" height="8" transform="rotate(25 80 155)"/></g></svg>`;
+// Простой SVG флаг СССР (красный с жёлтой звездой)
+const USSR_FLAG_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><rect width='90' height='60' fill='%23CC0000'/><polygon points='15,10 18,20 28,20 20,26 23,36 15,30 7,36 10,26 2,20 12,20' fill='%23FFCC00'/></svg>";
 
 // SVG флаг России (бело-сине-красный)
-const RUSSIA_FLAG_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60"><rect width="90" height="20" fill="white"/><rect y="20" width="90" height="20" fill="%230039A6"/><rect y="40" width="90" height="20" fill="%23D52B1E"/></svg>`;
+const RUSSIA_FLAG_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><rect width='90' height='20' fill='white'/><rect y='20' width='90' height='20' fill='%230039A6'/><rect y='40' width='90' height='20' fill='%23D52B1E'/></svg>";
 
 function getFlagUrl(nation) {
     if (nation === 'ussr') return USSR_FLAG_SVG;
