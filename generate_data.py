@@ -54,6 +54,25 @@ COLLECTOR_TANKS = {
     '112', 'FCM 50 t'
 }
 
+NATION_FLAGS = {
+    'ussr': '🇷🇺', 'russia': '🇷🇺',
+    'germany': '🇩',
+    'usa': '🇺🇸',
+    'china': '🇨🇳',
+    'france': '🇫🇷',
+    'uk': '🇬🇧', 'britain': '🇬',
+    'japan': '🇯🇵',
+    'czech': '🇿', 'czechoslovakia': '🇨🇿',
+    'sweden': '🇸🇪',
+    'poland': '🇵🇱',
+    'italy': '🇮',
+}
+
+def get_nation_from_tag(tag):
+    if ':' in tag:
+        return tag.split(':')[0].lower()
+    return 'unknown'
+
 def classify_tank(name):
     if name in COLLECTOR_TANKS:
         return 'collector'
@@ -61,9 +80,7 @@ def classify_tank(name):
         return 'premium'
     return 'regular'
 
-TYPE_MAP = {
-    'LT': 'ЛТ', 'MT': 'СТ', 'HT': 'ТТ', 'AT': 'ПТ-САУ', 'SPG': 'САУ'
-}
+TYPE_MAP = {'LT': 'ЛТ', 'MT': 'СТ', 'HT': 'ТТ', 'AT': 'ПТ-САУ', 'SPG': 'САУ'}
 
 CLICKHOUSE_URL = 'http://db.wotstat.info:80/?user=public'
 
@@ -72,8 +89,11 @@ def fetch_data(months, max_retries=3):
     
     query = f"""
     SELECT 
+        e.tankTag,
         t.nameRU AS tank_name,
         t.shortNameRU AS short_name,
+        t.nation,
+        t.iconUrl,
         e.level,
         e.type,
         e.total_battles,
@@ -117,22 +137,15 @@ def fetch_data(months, max_retries=3):
         HAVING total_battles > {min_battles}
     ) e
     LEFT JOIN TankList t ON e.tankTag = t.tag
-    WHERE t.nameRU IS NOT NULL
+    WHERE t.nameRU IS NOT NULL AND t.nameRU != ''
     ORDER BY e.level ASC, e.type ASC, e.win_rate DESC
     """
     
     for attempt in range(max_retries):
         try:
             print(f"  Попытка {attempt + 1}/{max_retries}...")
-            
             url = f"{CLICKHOUSE_URL}&query={urllib.parse.quote(query)}"
-            
-            req = urllib.request.Request(
-                url,
-                method='GET',
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            
+            req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=60) as response:
                 text = response.read().decode('utf-8')
             
@@ -142,54 +155,9 @@ def fetch_data(months, max_retries=3):
                 if not line.strip():
                     continue
                 parts = line.split('\t')
-                if len(parts) >= 7:
-                    name, short_name, level, tank_type, battles, wins, win_rate = parts[:7]
-                    tanks.append({
-                        'name': name,
-                        'short_name': short_name,
-                        'level': int(level),
-                        'type': TYPE_MAP.get(tank_type, tank_type),
-                        'type_code': tank_type,
-                        'battles': int(battles),
-                        'wins': int(wins),
-                        'win_rate': float(win_rate),
-                        'category': classify_tank(name)
-                    })
-            return tanks
-        except Exception as e:
-            print(f"  Ошибка: {e}")
-            if attempt < max_retries - 1:
-                print("  Ждём 5 секунд...")
-                time.sleep(5)
-    
-    raise Exception(f"Не удалось получить данные после {max_retries} попыток")
-
-def main():
-    print("Генерация данных...")
-    os.makedirs('data', exist_ok=True)
-    
-    data = {
-        'updated': datetime.now().strftime('%d.%m.%Y %H:%M'),
-        'periods': {}
-    }
-    
-    periods = {
-        '3m': 3,
-        '6m': 6,
-        '12m': 12,
-        'all': 999
-    }
-    
-    for key, months in periods.items():
-        print(f"Загрузка данных за {months} мес...")
-        data['periods'][key] = fetch_data(months)
-        print(f"  Получено {len(data['periods'][key])} танков")
-    
-    with open('data/tanks.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    
-    total = sum(len(v) for v in data['periods'].values())
-    print(f"\nГотово! Сохранено {total} записей в data/tanks.json")
-
-if __name__ == '__main__':
-    main()
+                if len(parts) >= 10:
+                    tag, name, short_name, nation, icon_url, level, tank_type, battles, wins, win_rate = parts[:10]
+                    if not name or not name.strip():
+                        continue
+                    nation_key = nation.lower() if nation else get_nation_from_tag(tag)
+                   
