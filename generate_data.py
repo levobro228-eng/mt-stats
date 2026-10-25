@@ -160,4 +160,40 @@ def fetch_data(months, max_retries=3):
                     if not name or not name.strip():
                         continue
                     nation_key = nation.lower() if nation else get_nation_from_tag(tag)
-                   
+                    tanks.append({
+                        'tag': tag,
+                        'name': name,
+                        'short_name': short_name,
+                        'nation': nation_key,
+                        'flag': NATION_FLAGS.get(nation_key, '🏳️'),
+                        'icon': icon_url or '',
+                        'level': int(level),
+                        'type': TYPE_MAP.get(tank_type, tank_type),
+                        'type_code': tank_type,
+                        'battles': int(battles),
+                        'wins': int(wins),
+                        'win_rate': float(win_rate),
+                        'category': classify_tank(name)
+                    })
+            return tanks
+        except Exception as e:
+            print(f"  Ошибка: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(5)
+    raise Exception(f"Не удалось получить данные после {max_retries} попыток")
+
+def main():
+    print("Генерация данных...")
+    os.makedirs('data', exist_ok=True)
+    data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
+    for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
+        print(f"Загрузка данных за {months} мес...")
+        data['periods'][key] = fetch_data(months)
+        print(f"  Получено {len(data['periods'][key])} танков")
+    with open('data/tanks.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    total = sum(len(v) for v in data['periods'].values())
+    print(f"\nГотово! Сохранено {total} записей")
+
+if __name__ == '__main__':
+    main()
