@@ -42,7 +42,7 @@ def build_query(months, min_b):
     return q
 
 def fetch(months, tries=3):
-    min_b = 300 if months <= 6 else 1000
+    min_b = 0  # Временно убираем порог для проверки
     query = build_query(months, min_b)
     for attempt in range(tries):
         try:
