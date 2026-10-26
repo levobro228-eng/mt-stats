@@ -15,8 +15,8 @@ def run_query(query, label):
         lines = text.strip().split('\n')
         print("Найдено строк: " + str(len(lines)))
         if len(lines) > 0:
-            print("Первые 5 строк:")
-            for line in lines[:5]:
+            print("Первые 10 строк:")
+            for line in lines[:10]:
                 print("  " + line)
         return lines
     except Exception as e:
@@ -24,28 +24,31 @@ def run_query(query, label):
         return []
 
 def main():
-    print("Диагностика базы wotstat.info")
+    print("Поиск танков 11 уровня по тегам")
     print("=" * 50)
     
-    # Запрос 1: Сколько всего танков в TankList с уровнем 11?
-    q1 = "SELECT tag, nameRU, level FROM TankList WHERE level = 11 AND nameRU != '' LIMIT 20"
-    run_query(q1, "Танки 11 уровня в TankList")
+    # Ищем конкретные теги танков 11 уровня
+    tags = [
+        'ussr:R124_Object_279',
+        'germany:G182_Mausekonig',
+        'germany:G184_EisBaer',
+        'usa:A150_MBT_B',
+        'china:Ch57_BZT_70',
+        'france:F134_ARL_Projet_F',
+        'uk:GB140_Champion'
+    ]
     
-    # Запрос 2: Какие вообще уровни есть в TankList?
-    q2 = "SELECT level, count() as cnt FROM TankList WHERE nameRU != '' GROUP BY level ORDER BY level"
-    run_query(q2, "Распределение танков по уровням в TankList")
+    tag_list = "','".join(tags)
+    q1 = "SELECT tankTag, tankLevel, count() as battles FROM Event_OnBattleResult WHERE region = 'RU' AND battleMode = 'REGULAR' AND dateTime >= now() - INTERVAL 6 MONTH AND tankTag IN ('" + tag_list + "') GROUP BY tankTag, tankLevel ORDER BY battles DESC"
+    run_query(q1, "Танки 11 уровня по тегам (за 6 месяцев)")
     
-    # Запрос 3: Есть ли бои на танках 11 уровня?
-    q3 = "SELECT tankTag, count() as battles FROM Event_OnBattleResult WHERE region = 'RU' AND battleMode = 'REGULAR' AND dateTime >= now() - INTERVAL 6 MONTH GROUP BY tankTag HAVING battles > 10 ORDER BY battles DESC LIMIT 20"
-    run_query(q3, "Топ-20 танков по боям за 6 месяцев")
+    # Проверяем в TankList
+    q2 = "SELECT tag, nameRU, level FROM TankList WHERE tag IN ('" + tag_list + "')"
+    run_query(q2, "Эти же танки в TankList")
     
-    # Запрос 4: Попробуем найти танки 11 уровня через JOIN
-    q4 = "SELECT e.tankTag, t.nameRU, e.level, count() as battles FROM Event_OnBattleResult e LEFT JOIN TankList t ON e.tankTag = t.tag WHERE e.region = 'RU' AND e.battleMode = 'REGULAR' AND e.dateTime >= now() - INTERVAL 6 MONTH AND t.level = 11 GROUP BY e.tankTag, t.nameRU, e.level ORDER BY battles DESC LIMIT 20"
-    run_query(q4, "Танки 11 уровня с боями (JOIN)")
-    
-    # Запрос 5: Проверим теги танков 11 уровня из TankList
-    q5 = "SELECT tag, nameRU, level FROM TankList WHERE nameRU LIKE '%279%' OR nameRU LIKE '%Mause%' OR nameRU LIKE '%Eis%' OR nameRU LIKE '%MBT-B%' OR nameRU LIKE '%Champion%' OR nameRU LIKE '%BZT%' OR nameRU LIKE '%ARL Projet%'"
-    run_query(q5, "Поиск известных танков 11 уровня по имени")
+    # Ищем все танки с этими тегами за всё время
+    q3 = "SELECT tankTag, tankLevel, count() as battles FROM Event_OnBattleResult WHERE region = 'RU' AND battleMode = 'REGULAR' AND tankTag IN ('" + tag_list + "') GROUP BY tankTag, tankLevel ORDER BY battles DESC"
+    run_query(q3, "Танки 11 уровня по тегам (за всё время)")
     
     print("\n" + "=" * 50)
     print("Диагностика завершена")
