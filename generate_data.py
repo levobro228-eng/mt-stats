@@ -47,8 +47,6 @@ def build_query(months, min_b):
     for tag in exclude:
         parts.append("AND tankTag NOT LIKE '%" + tag + "%'")
     
-    # УБРАН фильтр NOT LIKE '%_T' — он блокировал танки 11 уровня!
-    
     parts.append("GROUP BY tankTag, tankLevel, tankType")
     parts.append("HAVING total_battles > " + str(min_b))
     parts.append(") e")
@@ -57,12 +55,36 @@ def build_query(months, min_b):
     parts.append("ORDER BY e.level ASC, e.type ASC, e.win_rate DESC")
     return "\n".join(parts)
 
-def fetch(months, tries=3):
-    min_b = 0
-    query = build_query(months, min_b)
+def build_query_level11(months):
+    """Специальный запрос для танков 11 уровня - БЕЗ фильтров по тегам"""
+    parts = []
+    parts.append("SELECT e.tankTag, t.nameRU, t.shortNameRU, t.nation, t.iconUrl, e.level, e.type, e.total_battles, e.wins, e.win_rate")
+    parts.append("FROM (")
+    parts.append("SELECT tankTag, tankLevel AS level, tankType AS type, count() AS total_battles, countIf(result = 'win') AS wins, round(wins * 100.0 / total_battles, 2) AS win_rate")
+    parts.append("FROM Event_OnBattleResult")
+    parts.append("WHERE battleMode = 'REGULAR'")
+    parts.append("AND region = 'RU'")
+    parts.append("AND dateTime >= now() - INTERVAL " + str(months) + " MONTH")
+    parts.append("AND tankLevel = 11")
+    parts.append("GROUP BY tankTag, tankLevel, tankType")
+    parts.append("HAVING total_battles > 0")
+    parts.append(") e")
+    parts.append("LEFT JOIN TankList t ON e.tankTag = t.tag")
+    parts.append("WHERE t.nameRU IS NOT NULL AND t.nameRU != ''")
+    parts.append("ORDER BY e.type ASC, e.win_rate DESC")
+    return "\n".join(parts)
+
+def fetch(months, tries=3, level11=False):
+    if level11:
+        query = build_query_level11(months)
+        min_b = 0
+    else:
+        min_b = 0
+        query = build_query(months, min_b)
+    
     for attempt in range(tries):
         try:
-            print("Attempt " + str(attempt + 1) + "/" + str(tries) + " for " + str(months) + " months")
+            print("Attempt " + str(attempt + 1) + "/" + str(tries) + " for " + str(months) + " months" + (" (level 11)" if level11 else ""))
             url = DB_URL + "&query=" + urllib.parse.quote(query)
             req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=120) as r:
@@ -107,11 +129,23 @@ def main():
     print("Loaded " + str(len(premiums)) + " premium and " + str(len(collectors)) + " collector names")
     
     data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
+    
     for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
         print("Loading " + str(months) + " months...")
-        tanks = fetch(months)
+        
+        # Получаем обычные танки (уровни 1-10)
+        tanks = fetch(months, level11=False)
+        
+        # Получаем танки 11 уровня отдельным запросом
+        tanks_11 = fetch(months, level11=True)
+        print("Found " + str(len(tanks_11)) + " tanks at level 11")
+        
+        # Объединяем
+        tanks.extend(tanks_11)
+        
         for tank in tanks:
             tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
+        
         data['periods'][key] = tanks
         
         cats = {}
@@ -120,7 +154,7 @@ def main():
             cats[t['category']] = cats.get(t['category'], 0) + 1
             levels[t['level']] = levels.get(t['level'], 0) + 1
         
-        print("Got " + str(len(tanks)) + " tanks")
+        print("Got " + str(len(tanks)) + " tanks total")
         print("  Categories: " + str(cats))
         print("  Levels: " + str(sorted(levels.items())))
     
