@@ -34,22 +34,38 @@ def classify_tank(name, tag, premiums, collectors):
     return 'regular'
 
 def build_query(months, min_b):
-    q = "SELECT e.tankTag, t.nameRU, t.shortNameRU, t.nation, t.iconUrl, e.level, e.type, e.total_battles, e.wins, e.win_rate FROM (SELECT tankTag, tankLevel AS level, tankType AS type, count() AS total_battles, countIf(result = 'win') AS wins, round(wins * 100.0 / total_battles, 2) AS win_rate FROM Event_OnBattleResult WHERE battleMode = 'REGULAR' AND region = 'RU' AND dateTime >= now() - INTERVAL "
-    q += str(months)
-    q += " MONTH AND tankTag NOT LIKE '%_Gold%' AND tankTag NOT LIKE '%_Prem%' AND tankTag NOT LIKE '%_MK%' AND tankTag NOT LIKE '%_Patton%' AND tankTag NOT LIKE '%_prot%' AND tankTag NOT LIKE '%_CFE_%' AND tankTag NOT LIKE '%_3D%' AND tankTag NOT LIKE '%_Beijing_Opera%' AND tankTag NOT LIKE '%_QL%' AND tankTag NOT LIKE '%_CN%' AND tankTag NOT LIKE '%_CO%' AND tankTag NOT LIKE '%_DV%' AND tankTag NOT LIKE '%_BF%' AND tankTag NOT LIKE '%_GrandFinal%' AND tankTag NOT LIKE '%_FL%' AND tankTag NOT LIKE '%_SH%' AND tankTag NOT LIKE '%_WT24_%' AND tankTag NOT LIKE '%_IC4_%' AND tankTag NOT LIKE '%_Ziqiang%' AND tankTag NOT LIKE '%_Yong_Bing%' AND tankTag NOT LIKE '%_Yongshi%' AND tankTag NOT LIKE '%_T' GROUP BY tankTag, tankLevel, tankType HAVING total_battles > "
-    q += str(min_b)
-    q += ") e LEFT JOIN TankList t ON e.tankTag = t.tag WHERE t.nameRU IS NOT NULL AND t.nameRU != '' ORDER BY e.level ASC, e.type ASC, e.win_rate DESC"
-    return q
+    parts = []
+    parts.append("SELECT e.tankTag, t.nameRU, t.shortNameRU, t.nation, t.iconUrl, e.level, e.type, e.total_battles, e.wins, e.win_rate")
+    parts.append("FROM (")
+    parts.append("SELECT tankTag, tankLevel AS level, tankType AS type, count() AS total_battles, countIf(result = 'win') AS wins, round(wins * 100.0 / total_battles, 2) AS win_rate")
+    parts.append("FROM Event_OnBattleResult")
+    parts.append("WHERE battleMode = 'REGULAR'")
+    parts.append("AND region = 'RU'")
+    parts.append("AND dateTime >= now() - INTERVAL " + str(months) + " MONTH")
+    
+    exclude = ['_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D', '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF', '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang', '_Yong_Bing', '_Yongshi']
+    for tag in exclude:
+        parts.append("AND tankTag NOT LIKE '%" + tag + "%'")
+    
+    # УБРАН фильтр NOT LIKE '%_T' — он блокировал танки 11 уровня!
+    
+    parts.append("GROUP BY tankTag, tankLevel, tankType")
+    parts.append("HAVING total_battles > " + str(min_b))
+    parts.append(") e")
+    parts.append("LEFT JOIN TankList t ON e.tankTag = t.tag")
+    parts.append("WHERE t.nameRU IS NOT NULL AND t.nameRU != ''")
+    parts.append("ORDER BY e.level ASC, e.type ASC, e.win_rate DESC")
+    return "\n".join(parts)
 
 def fetch(months, tries=3):
-    min_b = 0  # Временно убираем порог для проверки
+    min_b = 0
     query = build_query(months, min_b)
     for attempt in range(tries):
         try:
-            print("Attempt " + str(attempt + 1) + "/" + str(tries))
+            print("Attempt " + str(attempt + 1) + "/" + str(tries) + " for " + str(months) + " months")
             url = DB_URL + "&query=" + urllib.parse.quote(query)
             req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=120) as r:
                 text = r.read().decode('utf-8')
             lines = text.strip().split('\n')
             tanks = []
@@ -97,10 +113,17 @@ def main():
         for tank in tanks:
             tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
         data['periods'][key] = tanks
+        
         cats = {}
+        levels = {}
         for t in tanks:
             cats[t['category']] = cats.get(t['category'], 0) + 1
-        print("Got " + str(len(tanks)) + " tanks: " + str(cats))
+            levels[t['level']] = levels.get(t['level'], 0) + 1
+        
+        print("Got " + str(len(tanks)) + " tanks")
+        print("  Categories: " + str(cats))
+        print("  Levels: " + str(sorted(levels.items())))
+    
     with open('data/tanks.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     total = sum(len(v) for v in data['periods'].values())
