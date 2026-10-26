@@ -1,167 +1,54 @@
 import json
 import os
-import time
 import urllib.request
 import urllib.parse
-from datetime import datetime
 
 DB_URL = 'http://db.wotstat.info:80/?user=public'
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-TYPE_MAP = {'lightTank': 'LT', 'mediumTank': 'MT', 'heavyTank': 'HT', 'AT-SPG': 'AT', 'SPG': 'SPG'}
-
-PREMIUM_SUFFIXES = ['_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D', '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF', '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang', '_Yong_Bing', '_Yongshi']
-
-def load_list(filename):
-    path = os.path.join(BASE_DIR, filename)
-    if not os.path.exists(path):
-        return set()
-    with open(path, 'r', encoding='utf-8') as f:
-        return set(line.strip().lower() for line in f if line.strip())
-
-def normalize(name):
-    return name.strip().lower()
-
-def classify_tank(name, tag, premiums, collectors):
-    n = normalize(name)
-    if n in collectors:
-        return 'collector'
-    if n in premiums:
-        return 'premium'
-    for suffix in PREMIUM_SUFFIXES:
-        if suffix in tag:
-            return 'premium'
-    return 'regular'
-
-def build_query(months, min_b):
-    parts = []
-    parts.append("SELECT e.tankTag, t.nameRU, t.shortNameRU, t.nation, t.iconUrl, e.level, e.type, e.total_battles, e.wins, e.win_rate")
-    parts.append("FROM (")
-    parts.append("SELECT tankTag, tankLevel AS level, tankType AS type, count() AS total_battles, countIf(result = 'win') AS wins, round(wins * 100.0 / total_battles, 2) AS win_rate")
-    parts.append("FROM Event_OnBattleResult")
-    parts.append("WHERE battleMode = 'REGULAR'")
-    parts.append("AND region = 'RU'")
-    parts.append("AND dateTime >= now() - INTERVAL " + str(months) + " MONTH")
-    
-    exclude = ['_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D', '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF', '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang', '_Yong_Bing', '_Yongshi']
-    for tag in exclude:
-        parts.append("AND tankTag NOT LIKE '%" + tag + "%'")
-    
-    parts.append("GROUP BY tankTag, tankLevel, tankType")
-    parts.append("HAVING total_battles > " + str(min_b))
-    parts.append(") e")
-    parts.append("LEFT JOIN TankList t ON e.tankTag = t.tag")
-    parts.append("WHERE t.nameRU IS NOT NULL AND t.nameRU != ''")
-    parts.append("ORDER BY e.level ASC, e.type ASC, e.win_rate DESC")
-    return "\n".join(parts)
-
-def build_query_level11(months):
-    """Специальный запрос для танков 11 уровня - БЕЗ фильтров по тегам"""
-    parts = []
-    parts.append("SELECT e.tankTag, t.nameRU, t.shortNameRU, t.nation, t.iconUrl, e.level, e.type, e.total_battles, e.wins, e.win_rate")
-    parts.append("FROM (")
-    parts.append("SELECT tankTag, tankLevel AS level, tankType AS type, count() AS total_battles, countIf(result = 'win') AS wins, round(wins * 100.0 / total_battles, 2) AS win_rate")
-    parts.append("FROM Event_OnBattleResult")
-    parts.append("WHERE battleMode = 'REGULAR'")
-    parts.append("AND region = 'RU'")
-    parts.append("AND dateTime >= now() - INTERVAL " + str(months) + " MONTH")
-    parts.append("AND tankLevel = 11")
-    parts.append("GROUP BY tankTag, tankLevel, tankType")
-    parts.append("HAVING total_battles > 0")
-    parts.append(") e")
-    parts.append("LEFT JOIN TankList t ON e.tankTag = t.tag")
-    parts.append("WHERE t.nameRU IS NOT NULL AND t.nameRU != ''")
-    parts.append("ORDER BY e.type ASC, e.win_rate DESC")
-    return "\n".join(parts)
-
-def fetch(months, tries=3, level11=False):
-    if level11:
-        query = build_query_level11(months)
-        min_b = 0
-    else:
-        min_b = 0
-        query = build_query(months, min_b)
-    
-    for attempt in range(tries):
-        try:
-            print("Attempt " + str(attempt + 1) + "/" + str(tries) + " for " + str(months) + " months" + (" (level 11)" if level11 else ""))
-            url = DB_URL + "&query=" + urllib.parse.quote(query)
-            req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=120) as r:
-                text = r.read().decode('utf-8')
-            lines = text.strip().split('\n')
-            tanks = []
-            for line in lines:
-                if not line.strip():
-                    continue
-                parts = line.split('\t')
-                if len(parts) >= 10:
-                    tag, name, short, nation, icon, level, ttype, battles, wins, wr = parts[:10]
-                    if not name or not name.strip():
-                        continue
-                    tanks.append({
-                        'tag': tag,
-                        'name': name,
-                        'short_name': short,
-                        'nation': nation.lower() if nation else 'unknown',
-                        'icon': icon if icon else '',
-                        'level': int(level),
-                        'type': TYPE_MAP.get(ttype, ttype),
-                        'type_code': ttype,
-                        'battles': int(battles),
-                        'wins': int(wins),
-                        'win_rate': float(wr)
-                    })
-            return tanks
-        except Exception as e:
-            print("Error: " + str(e))
-            if attempt < tries - 1:
-                print("Waiting...")
-                time.sleep(5)
-    raise Exception("Failed after " + str(tries) + " attempts")
+def run_query(query, label):
+    print("\n=== " + label + " ===")
+    try:
+        url = DB_URL + "&query=" + urllib.parse.quote(query)
+        req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            text = r.read().decode('utf-8')
+        lines = text.strip().split('\n')
+        print("Найдено строк: " + str(len(lines)))
+        if len(lines) > 0:
+            print("Первые 5 строк:")
+            for line in lines[:5]:
+                print("  " + line)
+        return lines
+    except Exception as e:
+        print("Ошибка: " + str(e))
+        return []
 
 def main():
-    print("Starting...")
-    os.makedirs('data', exist_ok=True)
+    print("Диагностика базы wotstat.info")
+    print("=" * 50)
     
-    premiums = load_list('premiums.txt')
-    collectors = load_list('collectors.txt')
-    print("Loaded " + str(len(premiums)) + " premium and " + str(len(collectors)) + " collector names")
+    # Запрос 1: Сколько всего танков в TankList с уровнем 11?
+    q1 = "SELECT tag, nameRU, level FROM TankList WHERE level = 11 AND nameRU != '' LIMIT 20"
+    run_query(q1, "Танки 11 уровня в TankList")
     
-    data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
+    # Запрос 2: Какие вообще уровни есть в TankList?
+    q2 = "SELECT level, count() as cnt FROM TankList WHERE nameRU != '' GROUP BY level ORDER BY level"
+    run_query(q2, "Распределение танков по уровням в TankList")
     
-    for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
-        print("Loading " + str(months) + " months...")
-        
-        # Получаем обычные танки (уровни 1-10)
-        tanks = fetch(months, level11=False)
-        
-        # Получаем танки 11 уровня отдельным запросом
-        tanks_11 = fetch(months, level11=True)
-        print("Found " + str(len(tanks_11)) + " tanks at level 11")
-        
-        # Объединяем
-        tanks.extend(tanks_11)
-        
-        for tank in tanks:
-            tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
-        
-        data['periods'][key] = tanks
-        
-        cats = {}
-        levels = {}
-        for t in tanks:
-            cats[t['category']] = cats.get(t['category'], 0) + 1
-            levels[t['level']] = levels.get(t['level'], 0) + 1
-        
-        print("Got " + str(len(tanks)) + " tanks total")
-        print("  Categories: " + str(cats))
-        print("  Levels: " + str(sorted(levels.items())))
+    # Запрос 3: Есть ли бои на танках 11 уровня?
+    q3 = "SELECT tankTag, count() as battles FROM Event_OnBattleResult WHERE region = 'RU' AND battleMode = 'REGULAR' AND dateTime >= now() - INTERVAL 6 MONTH GROUP BY tankTag HAVING battles > 10 ORDER BY battles DESC LIMIT 20"
+    run_query(q3, "Топ-20 танков по боям за 6 месяцев")
     
-    with open('data/tanks.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    total = sum(len(v) for v in data['periods'].values())
-    print("Done! Saved " + str(total) + " records")
+    # Запрос 4: Попробуем найти танки 11 уровня через JOIN
+    q4 = "SELECT e.tankTag, t.nameRU, e.level, count() as battles FROM Event_OnBattleResult e LEFT JOIN TankList t ON e.tankTag = t.tag WHERE e.region = 'RU' AND e.battleMode = 'REGULAR' AND e.dateTime >= now() - INTERVAL 6 MONTH AND t.level = 11 GROUP BY e.tankTag, t.nameRU, e.level ORDER BY battles DESC LIMIT 20"
+    run_query(q4, "Танки 11 уровня с боями (JOIN)")
+    
+    # Запрос 5: Проверим теги танков 11 уровня из TankList
+    q5 = "SELECT tag, nameRU, level FROM TankList WHERE nameRU LIKE '%279%' OR nameRU LIKE '%Mause%' OR nameRU LIKE '%Eis%' OR nameRU LIKE '%MBT-B%' OR nameRU LIKE '%Champion%' OR nameRU LIKE '%BZT%' OR nameRU LIKE '%ARL Projet%'"
+    run_query(q5, "Поиск известных танков 11 уровня по имени")
+    
+    print("\n" + "=" * 50)
+    print("Диагностика завершена")
 
 if __name__ == '__main__':
     main()
