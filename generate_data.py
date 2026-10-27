@@ -6,39 +6,68 @@ import urllib.parse
 from datetime import datetime
 
 DB_URL = 'http://db.wotstat.info:80/?user=public'
+TANKOPEDIA_URL = 'https://tanki.su/api/tankopedia?realm=runet&language=ru'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TYPE_MAP = {'lightTank': 'LT', 'mediumTank': 'MT', 'heavyTank': 'HT', 'AT-SPG': 'AT', 'SPG': 'SPG'}
 
-PREMIUM_SUFFIXES = ['_Gold', '_Prem', '_MK', '_Patton', '_prot', '_CFE_', '_3D', '_Beijing_Opera', '_QL', '_CN', '_CO', '_DV', '_BF', '_GrandFinal', '_FL', '_SH', '_WT24_', '_IC4_', '_Ziqiang', '_Yong_Bing', '_Yongshi']
+def load_tankopedia():
+    """Загружаем актуальный справочник техники из публичного API tanki.su"""
+    print("Загрузка справочника техники из tanki.su...")
+    try:
+        req = urllib.request.Request(TANKOPEDIA_URL, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        
+        catalog = {}
+        tanks = data.get('data', {}).get('tanks', {})
+        
+        for tag, info in tanks.items():
+            name = info.get('name', '').strip()
+            if not name:
+                continue
+            
+            nation = info.get('nation', 'unknown')
+            tier = info.get('tier', 0)
+            is_premium = info.get('is_premium', False)
+            is_reward = info.get('is_reward', False)
+            
+            # Определяем категорию
+            if is_reward:
+                category = 'collector'
+            elif is_premium:
+                category = 'premium'
+            else:
+                category = 'regular'
+            
+            catalog[name.lower()] = {
+                'nation': nation,
+                'level': tier,
+                'category': category
+            }
+        
+        print("Загружено " + str(len(catalog)) + " танков из справочника")
+        
+        # Статистика
+        levels = {}
+        cats = {}
+        for info in catalog.values():
+            levels[info['level']] = levels.get(info['level'], 0) + 1
+            cats[info['category']] = cats.get(info['category'], 0) + 1
+        
+        print("Уровни: " + str(sorted(levels.items())))
+        print("Категории: " + str(cats))
+        
+        return catalog
+    except Exception as e:
+        print("Ошибка загрузки справочника: " + str(e))
+        return {}
 
-def load_list(filename):
-    path = os.path.join(BASE_DIR, filename)
-    if not os.path.exists(path):
-        return set()
-    with open(path, 'r', encoding='utf-8') as f:
-        return set(line.strip().lower() for line in f if line.strip())
-
-def load_extra_tanks():
-    path = os.path.join(BASE_DIR, 'extra_tanks.json')
-    if not os.path.exists(path):
-        return []
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-def normalize(name):
-    return name.strip().lower()
-
-def classify_tank(name, tag, premiums, collectors):
-    n = normalize(name)
-    if n in collectors:
-        return 'collector'
-    if n in premiums:
-        return 'premium'
-    for suffix in PREMIUM_SUFFIXES:
-        if suffix in tag:
-            return 'premium'
-    return 'regular'
+def classify_tank(name, catalog):
+    key = name.strip().lower()
+    if key in catalog:
+        return catalog[key]
+    return None
 
 def build_query(months, min_b):
     parts = []
@@ -67,7 +96,7 @@ def fetch(months, tries=3):
     query = build_query(months, min_b)
     for attempt in range(tries):
         try:
-            print("Attempt " + str(attempt + 1) + "/" + str(tries) + " for " + str(months) + " months")
+            print("Запрос статистики за " + str(months) + " мес. (попытка " + str(attempt + 1) + "/" + str(tries) + ")")
             url = DB_URL + "&query=" + urllib.parse.quote(query)
             req = urllib.request.Request(url, method='GET', headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=120) as r:
@@ -97,49 +126,58 @@ def fetch(months, tries=3):
                     })
             return tanks
         except Exception as e:
-            print("Error: " + str(e))
+            print("Ошибка: " + str(e))
             if attempt < tries - 1:
-                print("Waiting...")
+                print("Ожидание 5 сек...")
                 time.sleep(5)
-    raise Exception("Failed after " + str(tries) + " attempts")
+    raise Exception("Не удалось получить данные после " + str(tries) + " попыток")
 
 def main():
-    print("Starting...")
+    print("=" * 50)
+    print("Запуск генерации данных")
+    print("=" * 50)
+    
     os.makedirs('data', exist_ok=True)
     
-    premiums = load_list('premiums.txt')
-    collectors = load_list('collectors.txt')
-    extra_tanks = load_extra_tanks()
-    print("Loaded " + str(len(premiums)) + " premium, " + str(len(collectors)) + " collector, and " + str(len(extra_tanks)) + " extra tanks")
+    # Шаг 1: Загружаем справочник из публичного API
+    catalog = load_tankopedia()
+    if not catalog:
+        raise Exception("Не удалось загрузить справочник техники")
     
     data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
     
+    # Шаг 2: Для каждого периода получаем статистику боёв
     for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
-        print("Loading " + str(months) + " months...")
+        print("\nПериод: " + key + " (" + str(months) + " мес.)")
         tanks = fetch(months)
         
+        matched = 0
+        unmatched = 0
         for tank in tanks:
-            tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
+            info = classify_tank(tank['name'], catalog)
+            if info:
+                tank['category'] = info['category']
+                tank['nation'] = info['nation']
+                tank['level'] = info['level']
+                matched += 1
+            else:
+                tank['category'] = 'regular'
+                unmatched += 1
         
-        # Добавляем танки 11 уровня и Сборной наций
-        tanks.extend(extra_tanks)
+        print("  Получено: " + str(len(tanks)) + " танков")
+        print("  Совпало со справочником: " + str(matched))
+        print("  Не найдено в справочнике: " + str(unmatched))
         
         data['periods'][key] = tanks
-        
-        cats = {}
-        levels = {}
-        for t in tanks:
-            cats[t['category']] = cats.get(t['category'], 0) + 1
-            levels[t['level']] = levels.get(t['level'], 0) + 1
-        
-        print("Got " + str(len(tanks)) + " tanks total")
-        print("  Categories: " + str(cats))
-        print("  Levels: " + str(sorted(levels.items())))
     
+    # Шаг 3: Сохраняем
     with open('data/tanks.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    
     total = sum(len(v) for v in data['periods'].values())
-    print("Done! Saved " + str(total) + " records")
+    print("\n" + "=" * 50)
+    print("Готово! Сохранено " + str(total) + " записей")
+    print("=" * 50)
 
 if __name__ == '__main__':
     main()
