@@ -1,0 +1,13 @@
+[
+  {"tag": "ussr:R124_Object_279", "name": "Объект 279", "nation": "ussr", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "germany:G182_Mausekonig", "name": "Mausekönig", "nation": "germany", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "germany:G184_EisBaer", "name": "Eisbär", "nation": "germany", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "usa:A150_MBT_B", "name": "MBT-B", "nation": "usa", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "china:Ch57_BZT_70", "name": "BZT-70", "nation": "china", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "france:F134_ARL_Projet_F", "name": "ARL Projet F", "nation": "france", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "uk:GB140_Champion", "name": "Champion", "nation": "uk", "level": 11, "type": "ТТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "intunion:Un06_M47_Romach", "name": "M47 Romach", "nation": "intunion", "level": 8, "type": "СТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "intunion:Un24_Vz_68_2_Britva", "name": "Vz. 68-2 Britva", "nation": "intunion", "level": 8, "type": "ПТ-САУ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "intunion:Un04_Vickers_MBT_EXP_FL", "name": "Vickers MBT EXP ЛФ", "nation": "intunion", "level": 8, "type": "СТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0},
+  {"tag": "intunion:Un12_Merkava_M48", "name": "Merkava М48", "nation": "intunion", "level": 9, "type": "СТ", "category": "premium", "battles": 0, "wins": 0, "win_rate": 0}
+]
