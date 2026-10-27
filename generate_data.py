@@ -19,6 +19,13 @@ def load_list(filename):
     with open(path, 'r', encoding='utf-8') as f:
         return set(line.strip().lower() for line in f if line.strip())
 
+def load_extra_tanks():
+    path = os.path.join(BASE_DIR, 'extra_tanks.json')
+    if not os.path.exists(path):
+        return []
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 def normalize(name):
     return name.strip().lower()
 
@@ -102,14 +109,21 @@ def main():
     
     premiums = load_list('premiums.txt')
     collectors = load_list('collectors.txt')
-    print("Loaded " + str(len(premiums)) + " premium and " + str(len(collectors)) + " collector names")
+    extra_tanks = load_extra_tanks()
+    print("Loaded " + str(len(premiums)) + " premium, " + str(len(collectors)) + " collector, and " + str(len(extra_tanks)) + " extra tanks")
     
     data = {'updated': datetime.now().strftime('%d.%m.%Y %H:%M'), 'periods': {}}
+    
     for key, months in [('3m', 3), ('6m', 6), ('12m', 12), ('all', 999)]:
         print("Loading " + str(months) + " months...")
         tanks = fetch(months)
+        
         for tank in tanks:
             tank['category'] = classify_tank(tank['name'], tank['tag'], premiums, collectors)
+        
+        # Добавляем танки 11 уровня и Сборной наций
+        tanks.extend(extra_tanks)
+        
         data['periods'][key] = tanks
         
         cats = {}
@@ -118,7 +132,7 @@ def main():
             cats[t['category']] = cats.get(t['category'], 0) + 1
             levels[t['level']] = levels.get(t['level'], 0) + 1
         
-        print("Got " + str(len(tanks)) + " tanks")
+        print("Got " + str(len(tanks)) + " tanks total")
         print("  Categories: " + str(cats))
         print("  Levels: " + str(sorted(levels.items())))
     
