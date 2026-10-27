@@ -17,7 +17,7 @@ const CATEGORY_LABELS = {
     collector: 'Коллекционные'
 };
 
-const NATION_FLAGS = {
+const NATION_FLAGS = { intunion: 'https://flagcdn.com/w40/xx.png'
     'ussr': '☭',
     'russia': '🇷🇺',
     'germany': '🇩',
@@ -34,7 +34,7 @@ const NATION_FLAGS = {
     'italy': '🇮🇹'
 };
 
-const NATION_NAMES = {
+const NATION_NAMES = { intunion: 'Сборная наций'
     'ussr': 'СССР',
     'russia': 'Россия',
     'germany': 'Германия',
